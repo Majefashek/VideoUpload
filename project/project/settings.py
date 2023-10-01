@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-*o*ys6a3f#sk&h!2blf4e-powpul=4=v7lw4k-m5h2g5$#vnu_
 DEBUG = True
 
 ALLOWED_HOSTS = ['https://hng-zuri-video-upload.onrender.com']
-#ALLOWED_HOSTS = []
+
 
 
 # Application definition
