@@ -20,6 +20,11 @@ from django.shortcuts import get_object_or_404
 from .models import Video, VideoChunk
 from .serializers import VideoSerializer
 from rest_framework.decorators import api_view
+import os
+import tempfile
+import io
+import base64
+
 
 
 
@@ -57,6 +62,12 @@ def upload_video_chunk(request):
 @csrf_exempt
 @api_view(['GET'])
 def  retrieveVideo(request, video_id):
+    def combine_video_chunks(chunk_files, output_path):
+        with open(output_path, 'wb') as output_file:
+            for chunk in chunk_files:
+                with chunk.video_file.open('rb') as chunk_file:
+                    output_file.write(chunk_file.read())
+
     if request.method=='GET':
         # Retrieve the Video object based on the video_id
         video = get_object_or_404(Video, pk=video_id)
@@ -76,11 +87,29 @@ def  retrieveVideo(request, video_id):
 
         #video_response = StreamingHttpResponse(video_stream, content_type='video/mp4')
         #video_response['Content-Disposition'] = f'inline; filename="{video.title}.mp4"'
+        with tempfile.NamedTemporaryFile(delete=False) as combined_file:
+            combine_video_chunks(chunk_files, combined_file.name)
+
+        with open(combined_file.name, 'rb') as combined_file_content:
+            file_content = combined_file_content.read()
 
 
         # Create a FileResponse to stream the video
-        response = FileResponse(generate_chunks(), content_type='video/mp4')
+        #response = FileResponse(generate_chunks(), content_type='video/mp4')
+        #response['Content-Disposition'] = f'inline; filename="{video.title}.mp4"'
+        #return response
+        response = FileResponse(open(combined_file.name, 'rb'), content_type='video/mp4')
         response['Content-Disposition'] = f'inline; filename="{video.title}.mp4"'
-        return response
+        blob = io.BytesIO(file_content)
+
+        # Encode the blob data as a Base64 string
+        blob_base64 = base64.b64encode(blob.getvalue()).decode()
+
+        # Create a JSON response with the Base64 encoded blob
+        response_data = {
+            "data": blob_base64
+        }
+
+        return JsonResponse(response_data)
         #data={'response':video_response}
         #return JsonResponse(data, safe=False)
